@@ -148,35 +148,38 @@
       margin-top: 10px;
     }
 
-    .back-arrow {
-      position: absolute;
-      top: 20px;
-      left: 20px;
-      font-size: 30px;
-      color: white;
-      background-color: transparent;
-      border: 2px solid white;
-      border-radius: 50%;
-      padding: 10px;
-      cursor: pointer;
-      box-shadow: 0 0 8px rgba(255, 255, 255, 0.5);
-      transition: all 0.3s ease;
-    }
+#backButton {
+  font-size: 32px;
+  color: white;
+  text-decoration: none;
+  padding: 10px;
+  position: absolute; /* Position the back button absolutely */
+  top: 20px; /* Adjust the top position */
+  left: 20px; /* Adjust the left position */
+  box-shadow: 0 0 10px white;
+  transition: all 0.3s;
+  border-radius: 50%; /* Adds the rounded frame */
+}
 
-    .back-arrow:hover {
-      background-color: rgba(255, 255, 255, 0.1);
-      box-shadow: 0 0 12px rgba(255, 255, 255, 0.7);
-    }
-
+#backButton:hover {
+  color: #ddd;
+}
     /* Mobile styling adjustments */
     @media (max-width: 600px) {
-  .back-arrow {
-    border: none;  /* Removes the border */
-    box-shadow: none;  /* Removes the shadow/glow */
-    margin-left: 0;  /* Removes margin on the left */
-    margin-top: 1px;  /* Moves the arrow up */
+  .back-button {
+    font-size: 24px;
+    margin-left: 0;
+    margin-top: 1px;
+    color: white;
+    text-decoration: none;
+    position: absolute;
+    top: 20px;
+    left: 20px;
+    border: none !important; /* Ensure no border on mobile */
+    background: none !important; /* Ensure no background */
+    box-shadow: none !important; /* Remove any shadow */
+    outline: none !important; /* Remove any outline */
   }
-
       h1 {
         font-size: 22px;
       }
@@ -249,166 +252,170 @@
   <p id="result"></p>
   <p id="reset-message" class="reset-message"></p>
 
-  <button class="back-arrow" onclick="goBack()">←</button>
+  <a href="../index.html" id="backButton" class="back-button">←</a>
+
 
 <script>
-  let currentPicker = null;
+let currentPicker = null;
 
-  function showCardPicker(slotId) {
-    currentPicker = slotId;
-    document.getElementById('card-picker').style.display = 'grid';
+// Show card picker when clicking a slot
+function showCardPicker(slotId) {
+  currentPicker = slotId;
+  document.getElementById('card-picker').style.display = 'grid';
+}
+
+// Select card for a slot
+function selectCard(value) {
+  if (currentPicker) {
+    const slot = document.getElementById(currentPicker);
+    slot.textContent = value;
+    slot.dataset.value = value;
+    updateRecommendation(); // Update recommendation when a card is selected
+  }
+  document.getElementById('card-picker').style.display = 'none';
+}
+
+// Get selected cards
+function getSelectedCards() {
+  return [
+    document.getElementById('player-card1').dataset.value || '',
+    document.getElementById('player-card2').dataset.value || '',
+  ].filter(card => card !== '');
+}
+
+// Get dealer card
+function getDealerCard() {
+  return document.getElementById('dealer-card').dataset.value || '';
+}
+
+// Update recommendation dynamically
+function updateRecommendation() {
+  const dealerUpCard = getDealerCard();
+  const playerHandCards = getSelectedCards();
+
+  if (!dealerUpCard || playerHandCards.length < 2) {
+    document.getElementById('result').innerHTML = "Please select all cards.";
+    return;
   }
 
-  function selectCard(value) {
-    if (currentPicker) {
-      const slot = document.getElementById(currentPicker);
-      slot.textContent = value;
-      slot.dataset.value = value;
-    }
-    document.getElementById('card-picker').style.display = 'none';
+  const selectedStrategy = document.getElementById('strategy').value;
+  let strategyFunction;
+
+  switch (selectedStrategy) {
+    case 'basic':
+      strategyFunction = basicStrategy;
+      break;
+    case 'advanced':
+      strategyFunction = advancedStrategy;
+      break;
+    case 'reverse':
+      strategyFunction = reverseStrategy;
+      break;
+    default:
+      strategyFunction = basicStrategy;
   }
 
-  function getSelectedCards() {
-    return [
-      document.getElementById('player-card1').dataset.value || '',
-      document.getElementById('player-card2').dataset.value || '',
-    ].filter(card => card !== '');
+  const recommendation = strategyFunction(dealerUpCard, playerHandCards);
+  document.getElementById('result').innerHTML = `Recommended move: ${recommendation}`;
+}
+
+// Recalculate the recommendation when the strategy changes
+document.getElementById('strategy').addEventListener('change', updateRecommendation);
+
+// Calculate the recommended move based on selected strategy
+function basicStrategy(dealerUpCard, playerHandCards) {
+  let totalValue = calculateHandValue(playerHandCards);
+  let hasAce = playerHandCards.includes('A');
+
+  if (playerHandCards.length === 2 && playerHandCards[0] === playerHandCards[1]) {
+    if (['A', '8'].includes(playerHandCards[0])) return 'Split';
+    if (['2', '3', '7'].includes(playerHandCards[0]) && dealerUpCard <= 7) return 'Split';
+    if (['6'].includes(playerHandCards[0]) && dealerUpCard <= 6) return 'Split';
+    if (['9'].includes(playerHandCards[0]) && !['7', '10', 'A'].includes(dealerUpCard)) return 'Split';
   }
 
-  function getDealerCard() {
-    return document.getElementById('dealer-card').dataset.value || '';
+  if (hasAce && totalValue >= 13 && totalValue <= 17 && dealerUpCard >= 5 && dealerUpCard <= 6) {
+    return 'Double Down';
   }
-
-  function calculateMove() {
-    const dealerUpCard = getDealerCard();
-    const playerHandCards = getSelectedCards();
-
-    if (!dealerUpCard || playerHandCards.length < 2) {
-      document.getElementById('result').innerHTML = "Please select all cards.";
-      return;
-    }
-
-    const selectedStrategy = document.getElementById('strategy').value;
-    let strategyFunction;
-
-    switch (selectedStrategy) {
-      case 'basic':
-        strategyFunction = basicStrategy;
-        break;
-      case 'advanced':
-        strategyFunction = advancedStrategy;
-        break;
-      case 'reverse':
-        strategyFunction = reverseStrategy;
-        break;
-      default:
-        strategyFunction = basicStrategy;
-    }
-
-    const recommendation = strategyFunction(dealerUpCard, playerHandCards);
-    document.getElementById('result').innerHTML = `Recommended move: ${recommendation}`;
-    
-    // Show the reset message if the recommendation is "Split"
-    if (recommendation === "Split") {
-      document.getElementById('reset-message').innerHTML = "Reset Assistant and start with each new hand.";
-    } else {
-      document.getElementById('reset-message').innerHTML = "";
-    }
-  }
-
-  function basicStrategy(dealerUpCard, playerHandCards) {
-    let totalValue = calculateHandValue(playerHandCards);
-    let hasAce = playerHandCards.includes('A');
-
-    if (playerHandCards.length === 2 && playerHandCards[0] === playerHandCards[1]) {
-      if (['A', '8'].includes(playerHandCards[0])) return 'Split';
-      if (['2', '3', '7'].includes(playerHandCards[0]) && dealerUpCard <= 7) return 'Split';
-      if (['6'].includes(playerHandCards[0]) && dealerUpCard <= 6) return 'Split';
-      if (['9'].includes(playerHandCards[0]) && !['7', '10', 'A'].includes(dealerUpCard)) return 'Split';
-    }
-
-    if (hasAce && totalValue >= 13 && totalValue <= 17 && dealerUpCard >= 5 && dealerUpCard <= 6) {
-      return 'Double Down';
-    }
-    if (hasAce && totalValue >= 18 && dealerUpCard <= 8) {
-      return 'Stand';
-    }
-
-    if (totalValue <= 11) return 'Hit';
-    if (totalValue >= 12 && totalValue <= 16 && dealerUpCard >= 7) return 'Hit';
-    if (totalValue >= 17) return 'Stand';
+  if (hasAce && totalValue >= 18 && dealerUpCard <= 8) {
     return 'Stand';
   }
 
-  function advancedStrategy(dealerUpCard, playerHandCards) {
-    let totalValue = calculateHandValue(playerHandCards);
-    let hasAce = playerHandCards.includes('A');
+  if (totalValue <= 11) return 'Hit';
+  if (totalValue >= 12 && totalValue <= 16 && dealerUpCard >= 7) return 'Hit';
+  if (totalValue >= 17) return 'Stand';
+  return 'Stand';
+}
 
-    if (playerHandCards.length === 2 && playerHandCards[0] === playerHandCards[1]) {
-      if (['A', '8'].includes(playerHandCards[0])) return 'Split';
-      if (['9'].includes(playerHandCards[0]) && dealerUpCard <= 9) return 'Split';
-      if (['7'].includes(playerHandCards[0]) && dealerUpCard <= 7) return 'Split';
-      if (['6'].includes(playerHandCards[0]) && dealerUpCard <= 6) return 'Split';
-    }
+// Advanced strategy (same as before, can be updated if needed)
+function advancedStrategy(dealerUpCard, playerHandCards) {
+  let totalValue = calculateHandValue(playerHandCards);
+  let hasAce = playerHandCards.includes('A');
 
-    if (hasAce && totalValue >= 13 && totalValue <= 18) {
-      if (dealerUpCard <= 6) return 'Double Down';
-      if (totalValue === 18 && dealerUpCard <= 8) return 'Stand';
-      return 'Hit';
-    }
-
-    if (totalValue >= 10 && totalValue <= 11 && dealerUpCard <= 9) return 'Double Down';
-    if (totalValue === 12 && dealerUpCard >= 4 && dealerUpCard <= 6) return 'Stand';
-    if (totalValue >= 13 && totalValue <= 16 && dealerUpCard <= 6) return 'Stand';
-    return basicStrategy(dealerUpCard, playerHandCards);
+  if (playerHandCards.length === 2 && playerHandCards[0] === playerHandCards[1]) {
+    if (['A', '8'].includes(playerHandCards[0])) return 'Split';
+    if (['9'].includes(playerHandCards[0]) && dealerUpCard <= 9) return 'Split';
+    if (['7'].includes(playerHandCards[0]) && dealerUpCard <= 7) return 'Split';
+    if (['6'].includes(playerHandCards[0]) && dealerUpCard <= 6) return 'Split';
   }
 
-  function reverseStrategy(dealerUpCard, playerHandCards) {
-    let basicMove = basicStrategy(dealerUpCard, playerHandCards);
+  if (hasAce && totalValue >= 13 && totalValue <= 18) {
+    if (dealerUpCard <= 6) return 'Double Down';
+    if (totalValue === 18 && dealerUpCard <= 8) return 'Stand';
+    return 'Hit';
+  }
 
-    switch (basicMove) {
-      case 'Hit': return 'Stand';
-      case 'Stand': return 'Hit';
-      case 'Double Down': return 'Hit';
-      case 'Split': return 'Stand';
-      default: return 'Stand';
+  if (totalValue >= 10 && totalValue <= 11 && dealerUpCard <= 9) return 'Double Down';
+  if (totalValue === 12 && dealerUpCard >= 4 && dealerUpCard <= 6) return 'Stand';
+  if (totalValue >= 13 && totalValue <= 16 && dealerUpCard <= 6) return 'Stand';
+  return basicStrategy(dealerUpCard, playerHandCards);
+}
+
+// Reverse strategy (same as before, can be updated if needed)
+function reverseStrategy(dealerUpCard, playerHandCards) {
+  let basicMove = basicStrategy(dealerUpCard, playerHandCards);
+
+  switch (basicMove) {
+    case 'Hit': return 'Stand';
+    case 'Stand': return 'Hit';
+    case 'Double Down': return 'Hit';
+    case 'Split': return 'Stand'; // Changed 'Do Not Split' to 'Stand'
+    default: return 'Stand';
+  }
+}
+
+// Calculate hand value (same as before)
+function calculateHandValue(hand) {
+  let total = 0;
+  let aceCount = 0;
+
+  for (const card of hand) {
+    if (card === 'A') {
+      aceCount++;
+      total += 11;
+    } else if (['J', 'Q', 'K'].includes(card)) {
+      total += 10;
+    } else {
+      total += parseInt(card);
     }
   }
 
-  function calculateHandValue(hand) {
-    let total = 0;
-    let aceCount = 0;
-
-    for (const card of hand) {
-      if (card === 'A') {
-        aceCount++;
-        total += 11;
-      } else if (['J', 'Q', 'K'].includes(card)) {
-        total += 10;
-      } else {
-        total += parseInt(card);
-      }
-    }
-
-    while (total > 21 && aceCount > 0) {
-      total -= 10;
-      aceCount--;
-    }
-
-    return total;
+  while (total > 21 && aceCount > 0) {
+    total -= 10;
+    aceCount--;
   }
 
-  function restartGame() {
-    document.getElementById('dealer-card').textContent = '+';
-    document.getElementById('player-card1').textContent = '+';
-    document.getElementById('player-card2').textContent = '+';
-    document.getElementById('result').textContent = '';
-    document.getElementById('reset-message').textContent = '';
-  }
+  return total;
+}
 
-  function goBack() {
-    window.history.back();
-  }
+function resetCards() {
+  document.getElementById('player-card1').textContent = '';
+  document.getElementById('player-card2').textContent = '';
+  document.getElementById('dealer-card').textContent = '';
+  document.getElementById('result').textContent = '';
+  document.getElementById('strategy').value = 'basic';
+}
+
 </script>
 
 </body>

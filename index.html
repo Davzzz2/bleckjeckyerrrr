@@ -308,15 +308,23 @@ function updateRecommendation() {
 
 // Add a new card slot for player when "Hit" is selected
 function addCardSlot() {
+  // Check if the last card slot is filled (if not, don't add another slot)
   const playerCardsContainer = document.getElementById('player-cards');
-  const newCardSlot = document.createElement('div');
-  newCardSlot.classList.add('card-slot');
-  newCardSlot.onclick = function() {
-    showCardPicker(newCardSlot.id);
-  };
-  newCardSlot.id = `player-card${playerCardsContainer.children.length + 1}`;
-  newCardSlot.textContent = "+";
-  playerCardsContainer.appendChild(newCardSlot);
+  const slots = playerCardsContainer.children;
+  
+  // Ensure the last slot is filled before adding a new one
+  if (slots.length === 0 || slots[slots.length - 1].dataset.value) {
+    const newCardSlot = document.createElement('div');
+    newCardSlot.classList.add('card-slot');
+    newCardSlot.onclick = function() {
+      showCardPicker(newCardSlot.id);
+    };
+    newCardSlot.id = `player-card${slots.length + 1}`;
+    newCardSlot.textContent = "+";
+    playerCardsContainer.appendChild(newCardSlot);
+  } else {
+    document.getElementById('result').innerHTML = "Please select the previous card before adding another.";
+  }
 }
 
 // Recalculate the recommendation when the strategy changes
@@ -431,6 +439,5 @@ function restartGame() {
   document.getElementById('card-picker').style.display = 'none';
 }
 </script>
-
 </body>
 </html>
